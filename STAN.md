@@ -12229,3 +12229,79 @@ Moja hipoteza „API czyta nieświeżo" była błędna i nie wchodzi do katalogu
 Prawdziwa nauka jest prostsza: **opublikowany DOM odpowiada na pytanie „co widzi
 czytelnik", a nie „co jest w szablonie". To dwa różne pytania** i dziś zadałem
 drugie, patrząc na odpowiedź na pierwsze.
+
+---
+
+## ŹRÓDŁA PRZEPISÓW W REPOZYTORIUM (2026-08-19, sesja Claude Code)
+
+Wejście: handoff „przeniesienie źródeł przepisów do GH" z sesji CMS-owej, która nie ma
+prawa pushu. Zakres: postawić architekturę, nie publikować.
+
+### Powód jest zmierzony, nie estetyczny
+
+Mikroskładnia używa pustej linii jako separatora bloków, pola źródłowe są typu PlainText,
+a **edytor Webflow puste linie kasuje** `[V 2026-08-19, sesja CMS]`. Zastane uszkodzenia:
+`kroki` w 2 przepisach (8 i 9 markerów `== tytuł` w środku linii), `co-mozesz-zmienic`
+w 5 (sklejone kafelki, `#kolendra` widoczny na stronie), `wskazowka` w 4 (pytanie
+kolejnego kafelka na końcu poprzedniego akapitu). **Żadnego nikt nie zgłosił** — wyszły
+przypadkiem, przy regeneracji.
+
+### Co stoi w repo
+
+`przepisy/<itemId>.txt` (16 plików, format `[nazwa-pola]` opisany w `lancuch-html/zrodlo.mjs`)
+→ `lancuch-html/generuj-html.mjs` → trzy wyjścia z jednego uruchomienia: 7 pól `*-html`,
+`dane/<itemId>.<sha8>.json` na Pages, `parser-url`. Spójność jest konstrukcyjna: powstają
+w jednym przebiegu z jednego odczytu pliku.
+
+**Generator nie parsuje mikroskładni.** Rozbiera ją `przepis-parser.js` przez most
+`odmiana-node.mjs` (dopisany eksport `parser()`); w generatorze został wyłącznie render.
+To jest to samo rozstrzygnięcie co `D-39.65` i `D-39.73` — jedna implementacja gramatyki,
+nie druga kopia wiedzy dzielonej.
+
+### Pomiar
+
+| kontrola | wynik |
+|---|---|
+| pliki źródłowe ↔ pola CMS, znak w znak (7 × 16) | **112 / 112** |
+| regeneracja → pola `*-html`, znak w znak | **112 / 112** |
+| pola pochodne `kcal/bialko/weglowodany/tluszcz-porcja` | **64 / 64** |
+| pętla plik↔item, sieroty | **0** |
+| błędy i uwagi walidatora na 16 plikach | **0 / 0** |
+| `narzedzia/suchy-bieg-generatora.mjs` — uszkodzenia złapane | **22 / 22** |
+
+### Cztery rzeczy, które wyszły przy okazji i są `[V]`
+
+1. **`liczba-porcji` NIE jest polem pochodnym**, wbrew handoffowi §4. Przy `porcje-bazowe: 3`
+   CMS ma raz „3 porcje" (chili), raz „2–3 porcje" (udziec); przy `4` — „4 porcje" i
+   „3–4 porcje". Widełki niosą informację redakcyjną, której w liczbie bazowej nie ma;
+   5 z 16 przepisów. Zostaje źródłem, w `[meta]`.
+2. **Generator strony nie escapował `"`**, a parser escapuje. Wskazówka wędliny niesie
+   w CMS `znaczy „dopiekaj"` z gołym cudzysłowem, nie `&quot;`. W treści elementu obie
+   formy wyglądają identycznie — **rozjazd bez objawu**, widoczny wyłącznie przy
+   porównaniu znak w znak. Generator ma teraz dwie ucieczki: `escTekst` i `escAtrybut`.
+3. **Uszkodzenie Webflow SKLEJA wiersze, nie zamienia pustej linii na zwykłą.** Gdyby
+   zamieniał, markery `==` zostałyby na początku wierszy i objaw „8 i 9 markerów w środku
+   linii" nie mógłby powstać. Liczby się zgadzają: chili ma 9 kroków, w środku wylądowało
+   8 markerów — wszystkie poza pierwszym. Suchy bieg odtwarza to uszkodzenie dosłownie.
+4. **Pierwsza wersja kontroli pozycji znaczników dała 63 fałszywe alarmy na 16 poprawnych
+   plikach**, bo `\s` w regexie łapało koniec poprzedniego wiersza. Złapał to dopiero suchy
+   bieg z kontrolą pozytywną „nieuszkodzony wzorzec przechodzi bez błędu". Sam suchy bieg
+   miał zresztą własną dziurę tej samej klasy: przypadek „przechowywanie bez pustych linii"
+   świecił na zielono, bo wzorzec ma tam JEDEN kafelek i nie było czego skleić — zielone
+   bez informacji. Stąd twarda gwarancja: uszkodzenie, które nic nie zmieniło we wzorcu,
+   jest teraz porażką przypadku, a nie jego sukcesem.
+
+### Czego świadomie nie zrobiłem
+
+Nic nie zapisane do CMS-u, nic nie opublikowane, pole `parser-url` nie założone, żadne pole
+nie usunięte, `przepis-parser.js` i szablon nietknięte. `wypchnij-do-cms.mjs` stoi gotowy
+i **wymusza kolejność** `push → Pages → CMS`: przed jakimkolwiek zapisem pobiera każdy
+`parser-url` z Pages i wymaga 200 o treści identycznej co do bajtu. Przypomnienie da się
+przeoczyć; 404 nie da się. Publikacji nie robi w żadnym trybie.
+
+Ładunek na Pages jest dziś **artefaktem bez konsumenta** — celowo. Ścieżka „parser pobiera
+JSON zamiast czytać wyspy `text/plain`" to zmiana runtime'u w pliku produkcyjnym i osobna
+decyzja; do tego czasu kolejność publikacji da się przećwiczyć bez ryzyka.
+
+Otwarte pozycje (czas kroku z `minutnik:`, pogrubienie w polach kartowych, zadanie
+harmonogramowe, ścieżka edycji dla redakcji): `lancuch-html/README.md` §„Otwarte pozycje".
