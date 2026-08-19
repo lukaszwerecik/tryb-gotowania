@@ -261,6 +261,87 @@ for (const { slug, zrodlo } of zrodla()) {
   await karta.close();
 }
 
+/* --- STANY MINUTNIKA wobec klatek Figmy ----------------------------------
+   Trzy klatki, trzy stany, liczby wprost z metadanych:
+     `7196:11087` „ostatnia minuta" — BOTTOM 180, stos 100, dwie pigułki 328×40
+     `7196:11116` „czas minął"      — BOTTOM 328, stos 248, kafel 236, primary
+                                       296×48, DWA ghosty 140×48 (x=0 i x=156)
+     `7196:11144` „stos dwóch"      — BOTTOM 266, stos 186, 328×40 + 328×126
+   Plus adnotacja z `7196:11087`: powyżej 60 s brązowa kropka statyczna; ostatnie
+   60 s kropka rośnie, robi się pomarańczowa i pulsuje raz na sekundę — RAMKA TEŻ. */
+{
+  const karta = await kontekst.newPage();
+  await karta.setViewportSize({ width: 360, height: 780 });
+  await karta.goto(ADRES);
+  const r = await karta.evaluate(() => {
+    const krok = { numer: 8, zIlu: 9, tytul: 'ugotuj makaron', tekst: 'x', tekstHtml: 'x', badge: '9 min',
+      kryteriumHtml: 'Zajrzyj pod przykrywkę: sos ma być gęsty i lekko się lepić do łyżki.',
+      minutnik: { sekundy: 540, nazwa: 'ugotuj makaron' },
+      skladnikiTeraz: [], skladnikiDalej: [], skladnikiZuzyte: [], zamiennikiWgKlucza: {} };
+    MP.tryb.otworz({ tytul: 't', czas: '9', meta: [], porcje: 2, skladniki: [], kroki: [krok], zamienniki: {}, bledy: [] }, { porcje: 2 });
+    MP.tryb.pokazKrok(1);
+    const K = MP.tryb.korzen();
+    const pud = (s) => { const e = K.querySelector(s); const b = e.getBoundingClientRect();
+      return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
+    const kafle = () => [].slice.call(K.querySelectorAll('.mp-tryb__pigulka')).map((e) => {
+      const b = e.getBoundingClientRect(), st = getComputedStyle(e);
+      const kr = getComputedStyle(e.querySelector('.mp-tryb__kropka'));
+      return { forma: e.getAttribute('data-forma'), stan: e.getAttribute('data-stan'),
+               y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height),
+               ramkaAnim: st.animationName, kropka: parseFloat(kr.width), kropkaAnim: kr.animationName };
+    });
+    const zdj = () => ({ bottom: pud('.mp-tryb__bottom'), stos: pud('.mp-tryb__stos'), kafle: kafle() });
+
+    MP.tryb.minutniki.uruchom({ nazwa: 'a', sekundy: 2100, rozwinieta: false });
+    MP.tryb.minutniki.uruchom({ nazwa: 'b', sekundy: 540, rozwinieta: false });
+    MP.zegar.__t += (540 - 47) * 1000; MP.tryb.minutniki.tyk();
+    const ostatniaMinuta = zdj();
+
+    MP.tryb.minutniki.wyczysc();
+    MP.tryb.minutniki.zKroku(krok);
+    MP.zegar.__t += 540 * 1000; MP.tryb.minutniki.tyk();
+    const czasMinal = Object.assign(zdj(), {
+      primary: pud('.mp-tryb__primary'), napis: K.querySelector('.mp-tryb__primary').textContent,
+      ghosty: [].slice.call(K.querySelectorAll('.mp-tryb__ghost')).filter((e) => e.offsetParent !== null)
+        .map((e) => { const b = e.getBoundingClientRect(); return { x: Math.round(b.x), w: Math.round(b.width), h: Math.round(b.height) }; }) });
+
+    MP.tryb.minutniki.wyczysc();
+    MP.tryb.minutniki.uruchom({ nazwa: 'a', sekundy: 2100 });
+    MP.tryb.minutniki.uruchom({ nazwa: 'b', sekundy: 540 });
+    const stosDwoch = zdj();
+    return { ostatniaMinuta, czasMinal, stosDwoch };
+  });
+
+  const b = [];
+  const om = r.ostatniaMinuta;
+  if (om.bottom.h !== 180 || om.stos.h !== 100) b.push(`ostatnia minuta: BOTTOM ${om.bottom.h}/stos ${om.stos.h} ≠ 180/100`);
+  if (om.kafle.length !== 2 || om.kafle.some((k) => k.h !== 40 || k.w !== 328))
+    b.push(`ostatnia minuta: pigułki ${JSON.stringify(om.kafle.map((k) => `${k.w}×${k.h}`))} ≠ dwie 328×40`);
+  if (om.kafle[1] && om.kafle[1].y - om.kafle[0].y !== 48) b.push(`ostatnia minuta: odstęp pigułek ${om.kafle[1].y - om.kafle[0].y} ≠ 48`);
+  if (om.kafle[0].kropka !== 8 || om.kafle[0].kropkaAnim !== 'none') b.push(`w toku: kropka ${om.kafle[0].kropka}px anim ${om.kafle[0].kropkaAnim} ≠ 8px statyczna`);
+  if (om.kafle[1].kropka !== 12 || om.kafle[1].kropkaAnim === 'none') b.push(`ostatnia minuta: kropka ${om.kafle[1].kropka}px anim ${om.kafle[1].kropkaAnim} ≠ 12px pulsująca`);
+  if (om.kafle[1].ramkaAnim === 'none') b.push('ostatnia minuta: RAMKA NIE PULSUJE — adnotacja klatki mówi „ramka minutnika też"');
+
+  const cm = r.czasMinal;
+  if (cm.bottom.h !== 328 || cm.stos.h !== 248) b.push(`czas minął: BOTTOM ${cm.bottom.h}/stos ${cm.stos.h} ≠ 328/248`);
+  if (cm.kafle[0].h !== 236) b.push(`czas minął: kafel ${cm.kafle[0].h} ≠ 236`);
+  if (cm.primary.w !== 296 || cm.primary.h !== 48) b.push(`czas minął: primary ${cm.primary.w}×${cm.primary.h} ≠ 296×48`);
+  if (cm.ghosty.length !== 2 || cm.ghosty.some((g) => g.w !== 140 || g.h !== 48))
+    b.push(`czas minął: ghosty ${JSON.stringify(cm.ghosty)} ≠ dwa 140×48`);
+  if (cm.ghosty.length === 2 && cm.ghosty[1].x - cm.ghosty[0].x !== 156)
+    b.push(`czas minął: odstęp ghostów ${cm.ghosty[1].x - cm.ghosty[0].x} ≠ 156`);
+  if (cm.kafle[0].kropkaAnim !== 'none' || cm.kafle[0].ramkaAnim !== 'none')
+    b.push('czas minął: puls nie zgasł przy 0:00 (I-21)');
+
+  const sd = r.stosDwoch;
+  if (sd.bottom.h !== 266 || sd.stos.h !== 186) b.push(`stos dwóch: BOTTOM ${sd.bottom.h}/stos ${sd.stos.h} ≠ 266/186`);
+  if (sd.kafle.map((k) => k.h).join() !== '40,126') b.push(`stos dwóch: wysokości ${sd.kafle.map((k) => k.h)} ≠ 40,126`);
+
+  if (b.length) zle('stany minutnika wobec Figmy', b.join('\n    '));
+  else { zdane++; console.log(`✓ stany minutnika — ostatnia minuta 180/100, czas minął 328/248 z dwoma ghostami 140×48, stos dwóch 266/186; ramka pulsuje i gaśnie na 0:00`); }
+  await karta.close();
+}
+
 await przegladarka.close();
 console.log(`\nminutników sprawdzonych: ${minutnikow}`);
 console.log(`zdane: ${zdane} · oblane: ${oblane}`);

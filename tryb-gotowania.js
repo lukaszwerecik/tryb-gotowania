@@ -556,6 +556,23 @@
     '#' + ID + ' [data-stan="koncowka"] .mp-tryb__kropka{animation:mp-tryb-puls .5s steps(30) infinite}' +
     '#' + ID + ' [data-stan="zero"] .mp-tryb__kropka{animation:none}' +
 
+    /* RAMKA PULSUJE RAZEM Z KROPKĄ. Adnotacja na klatce `7196:11087` mówi wprost:
+       „Ostatnie 60 s: kropka rośnie, robi się pomarańczowa i pulsuje raz na
+       sekundę — RAMKA MINUTNIKA TEŻ". Runtime animował samą kropkę; ramka miała
+       barwę alarmu, ale stała. Zgłoszone przez operatora 2026-08-19.
+
+       Pulsujemy BARWĄ obrysu, nie `transform`: skala na pigułce ruszyłaby całym
+       kaflem i rozjechała `stos`, a wszystkie liczby §2.2 są wymiarami pudełka.
+       To jest odczyt adnotacji, nie odczyt rysunku — plik nie mówi, CO w ramce
+       pulsuje, a barwa jest jedyną własnością, która nie dotyka układu. [I]
+
+       Tempo i wygaszenie przy 0:00 idą za kropką, żeby jedna rzecz nie pulsowała
+       w dwóch rytmach. */
+    '@keyframes mp-tryb-puls-ramki{0%,100%{outline-color:var(--mp-alarm)}50%{outline-color:transparent}}' +
+    '#' + ID + ' .mp-tryb__pigulka[data-stan="ostatnia-minuta"]{animation:mp-tryb-puls-ramki 1s steps(60) infinite}' +
+    '#' + ID + ' .mp-tryb__pigulka[data-stan="koncowka"]{animation:mp-tryb-puls-ramki .5s steps(30) infinite}' +
+    '#' + ID + ' .mp-tryb__pigulka[data-stan="zero"]{animation:none}' +
+
     /* W17: styl `Caption` — DM Sans **Medium (500)**, 14/16, `primary-text`.
        Stopień i interlinia były zgodne; nieustawiona była grubość, czyli jedyna
        z trzech własności, której nie widać na zrzucie bez wpiętego fontu. */
