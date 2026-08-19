@@ -12347,3 +12347,43 @@ Nieprawda — po instalacji `github.com/apps/claude` zapis zadziałał natychmia
 API, i przez `git push`, bez restartu sesji. Wniosek pochodził z tego, że odświeżenie
 konektora nic nie dało; ale konektor odnawiał AUTORYZACJĘ, a brakowało INSTALACJI.
 Kasowanie referencji pozostaje odmawiane (403) przy działającym tworzeniu.
+
+### `D-39.75` — blok składników tylko na krokach z własnymi składnikami `[U]` 2026-08-19
+
+Zgłoszenie operatora po obejrzeniu kroku 1 wołowiny teriyaki na stagingu: krok
+„nastaw piekarnik i wodę" nie używa niczego, a dostawał ramkę z pełną dwunastką
+w sekcji „dalej". Doprecyzowanie operatora: **start nie jest krokiem** — arkusz
+z „pokaż składniki" na ekranie startowym zostaje bez zmian, zmiana dotyczy kroków.
+
+**ODWRACA `D-39.16`, bo przesłanka tamtej decyzji zniknęła.** D-39.16 broniło
+ścieżki „najpierw pokaż składniki", która wrzucała użytkownika na krok 1 z rozwiniętą
+listą; przy wyciętym bloku dostawał pustkę. **Dzień później `D-39.45` przeniosło tę
+akcję na arkusz ekranu startowego** (`akcjaEkranu()` dla `start` → `otworzArkusz()`),
+więc na krok 1 nikt już tą drogą nie wchodzi. Obrona pilnowała od dwóch dni trasy,
+której nie ma.
+
+**Wzorzec do zapamiętania:** obrona postawiona przeciw konkretnej ścieżce przeżywa
+jej usunięcie i wygląda potem jak decyzja o wyglądzie. Pytanie przy cofaniu takiej
+obrony brzmi „czy trasa jeszcze istnieje", nie „czy tak ładniej".
+
+**Cena, nazwana:** na kroku bez własnych składników pełna lista jest w trakcie
+gotowania nieosiągalna. W tym przepisie 2 kroki z 9.
+
+**Pomiar `[V]`** — Chromium headless, `playwright-core`, strona próbna z pól
+źródłowych wołowiny teriyaki, **kontrola ujemna na wersji sprzed zmiany z gita**:
+
+| krok | teraz | PRZED | PO |
+|---|---|---|---|
+| 1 „nastaw piekarnik i wodę" | 0 | blok, 12 wierszy | **brak** |
+| 8 „połącz całość" | 0 | blok, 12 wierszy | **brak** |
+| pozostałe 7 | 1–4 | blok | blok |
+
+Zero błędów strony w obu wariantach. Bez kontroli ujemnej ten pomiar nic by nie
+znaczył — pierwsza wersja przyrządu dawała `blok: false` na WSZYSTKICH krokach,
+bo `MP.tryb.otworz()` wołane bez argumentu zostawia `stan.widok` puste, a `pokazKrok()`
+wychodzi wtedy natychmiast. Przyrząd mierzył ekran startowy i wyglądał na wynik.
+
+**Minifikat przebudowany** (`terser -c -m`, 50 597 → 50 481 B) z kontrolą: przebudowa
+`przepis-parser.min.js`, którego nie tknięto, wyszła **bajt w bajt identyczna** z plikiem
+na dysku — czyli recepta i wersja narzędzia się zgadzają, a różnica w drugim artefakcie
+pochodzi wyłącznie z tej zmiany.
