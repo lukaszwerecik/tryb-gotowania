@@ -428,9 +428,14 @@
          Cień zostaje: nav strony go nie ma, ale pas dolny overlaya oddziela treść
          przewijaną pod spodem, a nie stoi na tle strony. Gdyby miał zniknąć, jest
          to osobna decyzja i osobny wiersz. */
-      'background:color-mix(in srgb,var(--mp-bialy) 80%,transparent);' +
-      'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);' +
-      'box-shadow:0 -1px 2px 0 rgba(62,43,34,.05),0 -4px 8px -2px rgba(62,43,34,.10)}' +
+      /* POWIERZCHNIA ZESZŁA STĄD NA PASKI (2026-08-19). Do dziś tło, rozmycie,
+         cień i zielona kreska siedziały na całym `BOTTOM`, czyli na sumie stosu
+         i paska. Skutek był taki, że kreska wędrowała: przy jednym minutniku
+         stała nad kaflem, przy dwóch wyżej — a pas dolny rósł i malał razem
+         z liczbą kafli. Operator nazwał to wprost: w krokach pasek ma STAŁĄ
+         wysokość, a minutniki mają nad nim PŁYWAĆ, nie dzielić z nim tła.
+         `BOTTOM` jest odtąd wyłącznie kontenerem układu — bez własnej skóry. */
+      'background:none;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}' +
     /* W02 (przeb. 21): kreska 1 px `secondary-text (h1)` #487622 nad pasem dolnym.
        PSEUDOELEMENT, nie `border-top` — i to nie jest ozdobnik implementacyjny.
        `BOTTOM` nie ma zadanej wysokości: wg reguły składania (INTERAKCJE §4.1)
@@ -440,8 +445,17 @@
        wysokości; `::before` jest jedynym odpowiednikiem, który tak samo nie
        uczestniczy w układzie. Ta sama logika, co `outline` zamiast `border`
        na pigułce alarmowej. Pomiar: `getComputedStyle(bottom,"::before")`. */
-    '#' + ID + ' .mp-tryb__bottom::before{content:"";position:absolute;top:0;' +
-      'left:0;right:0;height:1px;background:var(--mp-zielen)}' +
+    /* Skóra paska: tło, rozmycie, cień i kreska 1 px `secondary-text (h1)` #487622.
+       Ta sama dla nawigacji (kroki) i dla pasa akcji (start / S1 / zakończenie) —
+       bo w obu wypadkach to ONA jest krawędzią, nad którą przewija się treść.
+       Kreska dalej pseudoelementem, nie `border-top`: przy `box-sizing:border-box`
+       dołożyłaby 1 px do wysokości 80/132 i wywróciła wiersz B7. */
+    '#' + ID + ' .mp-tryb__nawigacja,#' + ID + ' .mp-tryb__akcje{position:relative;' +
+      'background:color-mix(in srgb,var(--mp-bialy) 80%,transparent);' +
+      'backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);' +
+      'box-shadow:0 -1px 2px 0 rgba(62,43,34,.05),0 -4px 8px -2px rgba(62,43,34,.10)}' +
+    '#' + ID + ' .mp-tryb__nawigacja::before,#' + ID + ' .mp-tryb__akcje::before{' +
+      'content:"";position:absolute;top:0;left:0;right:0;height:1px;background:var(--mp-zielen)}' +
     /* `center`, nie `flex-start`: `←` ma 44 px, a CTA 48, więc jedno wyrównanie
        od góry nie ustawi obu. Projekt (`7195:11065`) daje `←` na +18 i CTA na +16,
        czyli OBA wyśrodkowane w pasie 80. Padding od góry 18 trzymał `←` poprawnie,
@@ -583,9 +597,15 @@
        kapsuła, tak samo jak CTA „dalej" (W06). Ósemka była tu tym samym promieniem
        kart treści, co przy pigułce; jedna liczba rozlana po trzech miejscach.
        Tekst: styl `Button` — DM Sans SemiBold **600**, 16/20. */
-    '#' + ID + ' .mp-tryb__primary{height:' + W.przycisk + 'px;flex:0 0 auto;border:0;' +
+    /* NIEWYPEŁNIONY — decyzja operatora 2026-08-19 z odczytu Figmy: brzmienie
+       „zatrzymaj" jest kanoniczne, ale CTA kafla jest obrysowane, nie wypełnione.
+       Runtime malował je atramentem na biało, czyli jak CTA `dalej` w nawigacji —
+       i przez to kafel konkurował o uwagę z jedynym przyciskiem, który ma prowadzić
+       dalej. Obrys ten sam co `.mp-tryb__ghost`: 1,5 px `beige-3`. */
+    '#' + ID + ' .mp-tryb__primary{height:' + W.przycisk + 'px;flex:0 0 auto;' +
+      'border:1.5px solid var(--mp-beige-3);' +
       'border-radius:100px;font-weight:600;line-height:20px;' +
-      'background:var(--mp-atrament);color:var(--mp-bialy);' +
+      'background:transparent;color:var(--mp-atrament);' +
       'font-size:16px;cursor:pointer;width:100%}' +
     '#' + ID + ' .mp-tryb__ghosty{display:flex;gap:' + W.wnetrze + 'px;flex:0 0 auto;' +
       'height:' + W.przycisk + 'px}' +

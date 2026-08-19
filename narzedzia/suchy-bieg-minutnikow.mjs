@@ -177,6 +177,17 @@ for (const { slug, zrodlo } of zrodla()) {
       return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
     const formy = () => [].slice.call(K.querySelectorAll('.mp-tryb__pigulka')).map((e) => e.getAttribute('data-forma'));
 
+    /* Pasek w krokach ma STAŁĄ wysokość i stałe położenie, a minutniki pływają
+       NAD nim. Mierzymy to wprost: górna krawędź nawigacji i zielona kreska nie
+       ruszają się przy 0, 1 i 2 minutnikach. Do 2026-08-19 kreska siedziała na
+       `BOTTOM`, więc wędrowała razem ze stosem — to jest ten rozjazd. */
+    const bez = { nawigacja: pud('.mp-tryb__nawigacja'),
+                  tloBottom: getComputedStyle(K.querySelector('.mp-tryb__bottom')).backgroundColor,
+                  cienBottom: getComputedStyle(K.querySelector('.mp-tryb__bottom')).boxShadow,
+                  kreskaNaPasku: getComputedStyle(K.querySelector('.mp-tryb__nawigacja'), '::before').backgroundColor,
+                  kreskaNaBottom: getComputedStyle(K.querySelector('.mp-tryb__bottom'), '::before').content,
+                  tloPaska: getComputedStyle(K.querySelector('.mp-tryb__nawigacja')).backgroundColor,
+                  cienPaska: getComputedStyle(K.querySelector('.mp-tryb__nawigacja')).boxShadow };
     MP.tryb.minutniki.zKroku(krok);
     const jeden = { formy: formy(), kafel: pud('.mp-tryb__pigulka'), stos: pud('.mp-tryb__stos'),
                     bottom: pud('.mp-tryb__bottom'), nawigacja: pud('.mp-tryb__nawigacja'),
@@ -185,7 +196,11 @@ for (const { slug, zrodlo } of zrodla()) {
     const dwa = { formy: formy(), bottom: pud('.mp-tryb__bottom') };
     MP.tryb.minutniki.przelacz(MP.tryb.minutniki.lista()[0]);
     const poPrzelaczeniu = formy();
-    return { jeden, dwa, poPrzelaczeniu };
+    const nawigacjaPrzyDwoch = pud('.mp-tryb__nawigacja');
+    /* CTA kafla ma być NIEWYPEŁNIONE — obrysowane, jak ghost. */
+    const cta = getComputedStyle(K.querySelector('.mp-tryb__primary'));
+    return { bez, jeden, dwa, poPrzelaczeniu, nawigacjaPrzyDwoch,
+             cta: { tlo: cta.backgroundColor, obrys: cta.borderTopWidth, tekst: cta.color } };
   });
   const bledy = [];
   if (r.jeden.formy.join() !== 'pelna') bledy.push(`świeży minutnik ma formę „${r.jeden.formy}", oczekiwałem rozwiniętej`);
@@ -202,6 +217,44 @@ for (const { slug, zrodlo } of zrodla()) {
   if (r.dwa.bottom.h >= 400) bledy.push(`dwa minutniki rozpychają BOTTOM do ${r.dwa.bottom.h} px`);
   if (r.poPrzelaczeniu.filter((f) => f !== 'zwinieta').length !== 1)
     bledy.push(`po ręcznym rozwinięciu: ${JSON.stringify(r.poPrzelaczeniu)}, oczekiwałem dokładnie jednego`);
+
+  /* --- pasek stały, minutniki pływają nad nim --- */
+  const yPaska = [r.bez.nawigacja.y, r.jeden.nawigacja.y, r.nawigacjaPrzyDwoch.y];
+  if (new Set(yPaska).size !== 1)
+    bledy.push(`górna krawędź nawigacji wędruje z liczbą minutników: ${JSON.stringify(yPaska)}`);
+  if (r.bez.tloBottom !== 'rgba(0, 0, 0, 0)' || r.bez.cienBottom !== 'none')
+    bledy.push(`BOTTOM ma własną skórę (tło ${r.bez.tloBottom}, cień ${r.bez.cienBottom}) — powinna siedzieć na pasku`);
+  if (r.bez.kreskaNaBottom !== 'none')
+    bledy.push('zielona kreska nadal wisi na BOTTOM — wędruje razem ze stosem');
+  if (!/rgb/.test(r.bez.kreskaNaPasku))
+    bledy.push(`nawigacja nie ma zielonej kreski (${r.bez.kreskaNaPasku})`);
+  /* Nie wystarczy, że skóra zeszła z `BOTTOM` — musi WYLĄDOWAĆ na pasku. Pierwsza
+     wersja tej bramki sprawdzała tylko połowę i przepuściła sabotaż, który zdjął
+     tło nawigacji: pasek stawał się przezroczysty, a treść przewijała się pod
+     CTA bez żadnej krawędzi. */
+  if (r.bez.tloPaska === 'rgba(0, 0, 0, 0)' || r.bez.cienPaska === 'none')
+    bledy.push(`nawigacja nie ma własnej skóry (tło ${r.bez.tloPaska}, cień ${r.bez.cienPaska})`);
+  if (r.cta.tlo !== 'rgba(0, 0, 0, 0)' || parseFloat(r.cta.obrys) < 1)
+    bledy.push(`CTA kafla wypełnione (tło ${r.cta.tlo}, obrys ${r.cta.obrys}) — ma być obrysowane`);
+
+  /* KONTROLA NEGATYWNA dla skóry paska: wstrzykujemy STARY stan (tło i kreska
+     z powrotem na `BOTTOM`) i sprawdzamy, że te same predykaty go odrzucają.
+     Bez tego trzy asercje wyżej są zdaniami, których nic nie sprawdza. */
+  const zlapane = await karta.evaluate(() => {
+    /* Selektor bierzemy z runtime'u, a nie zgadujemy identyfikatora korzenia —
+       pierwsza wersja tej kontroli chybiła i wywróciła się na `getComputedStyle`. */
+    const K = MP.tryb.korzen();
+    const sel = '#' + K.id + ' .mp-tryb__bottom';
+    const st = document.createElement('style');
+    st.textContent = sel + '{background:#fff;box-shadow:0 -1px 2px #000}'
+      + sel + '::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:#487622}';
+    document.head.appendChild(st);
+    const b = K.querySelector('.mp-tryb__bottom');
+    return { tlo: getComputedStyle(b).backgroundColor, cien: getComputedStyle(b).boxShadow,
+             kreska: getComputedStyle(b, '::before').content };
+  });
+  const widziStara = zlapane.tlo === 'rgba(0, 0, 0, 0)' || zlapane.cien === 'none' || zlapane.kreska === 'none';
+  if (widziStara) bledy.push('KONTROLA NEGATYWNA: przywrócona skóra na BOTTOM NIE została zauważona — asercje nic nie mierzą');
 
   if (bledy.length) zle('akordeon i geometria wobec Figmy', bledy.join('\n    '));
   else { zdane++; console.log(`✓ akordeon i geometria — kafel 328×236, stos 248, BOTTOM 328, nawigacja 80, treść 780; dwa minutniki: BOTTOM ${r.dwa.bottom.h}`); }
