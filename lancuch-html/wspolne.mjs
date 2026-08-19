@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { wczytajPlik } from './zrodlo.mjs';
 
 export const KORZEN = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const KATALOG_ZRODEL = path.join(KORZEN, 'przepisy');
@@ -41,6 +42,33 @@ export function wczytajZrzut(sciezka) {
   throw new Error(`${sciezka}: nie znalazłem tablicy items w zrzucie`);
 }
 
-export const idZrodel = () => fs.existsSync(KATALOG_ZRODEL)
-  ? fs.readdirSync(KATALOG_ZRODEL).filter((f) => f.endsWith('.txt')).map((f) => f.slice(0, -4)).sort()
-  : [];
+/* JEDYNE miejsce, które wie, jak nazywają się pliki źródłowe i skąd bierze się
+   identyfikator itemu. Wcześniej wiedział o tym każdy skrypt z osobna — nazwa
+   pliku BYŁA itemId — i każdy musiałby zostać poprawiony przy zmianie konwencji.
+
+   Zwraca `{ slug, plik, item, zrodlo }`, posortowane po slugu. `item` bywa
+   `null`: to przepis, który jeszcze nie ma miejsca w kolekcji.
+
+   Sprawdza przy okazji zgodność nazwy pliku ze slugiem w `[meta]`. To nie jest
+   pedanteria: rozjazd tych dwóch znaczy, że ktoś zmienił slug i nie przemianował
+   pliku, więc CMS dostałby nowy adres strony, a ładunek zostałby pod starym. */
+export function sprawdzNazwePliku(nazwaPliku, slugZMeta) {
+  const slugPliku = nazwaPliku.replace(/\.txt$/, '');
+  if (slugPliku !== slugZMeta) {
+    throw new Error(`przepisy/${nazwaPliku}: nazwa pliku „${slugPliku}" nie zgadza się ze slugiem ` +
+      `„${slugZMeta}" w [meta] — przemianuj plik albo popraw slug`);
+  }
+}
+
+export function zrodla() {
+  if (!fs.existsSync(KATALOG_ZRODEL)) return [];
+  return fs.readdirSync(KATALOG_ZRODEL)
+    .filter((f) => f.endsWith('.txt')).sort()
+    .map((f) => {
+      const plik = path.join(KATALOG_ZRODEL, f);
+      const zrodlo = wczytajPlik(plik);
+      const slugPliku = f.slice(0, -4);
+      sprawdzNazwePliku(f, zrodlo.meta.slug);
+      return { slug: slugPliku, plik, item: zrodlo.meta.item || null, zrodlo };
+    });
+}

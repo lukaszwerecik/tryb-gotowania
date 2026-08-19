@@ -114,7 +114,7 @@ for (const plik of fs.readdirSync(KAT).filter((f) => f.endsWith('.txt'))) {
 
 /* --- kontrola negatywna: stary silnik MUSI się rozjechać --- */
 {
-  const t = fs.readFileSync(path.join(KAT, '6a57652c742cc19ceca141ad.txt'), 'utf8');
+  const t = fs.readFileSync(path.join(KAT, 'wolowina-teriyaki-z-brokulami-przepis.txt'), 'utf8');
   const skl = sekcja(t, 'skladniki'), kroki = sekcja(t, 'kroki'), baza = 2;
   const model = { skladniki: P._wewnetrzne.parsujSkladniki(skl), kroki: [], porcjeBazowe: baza };
   await karta.setContent(strona(skl, kroki, baza, STARY));
@@ -132,7 +132,7 @@ for (const plik of fs.readdirSync(KAT).filter((f) => f.endsWith('.txt'))) {
    przy jednym kliknięciu, a wygrywałby losowy. Ta próba pilnuje, że w schowku
    ląduje payload z nagłówkiem — czyli ten od `mpKopiujListe`, jeden. */
 {
-  const t = fs.readFileSync(path.join(KAT, '6a57652c742cc19ceca141ad.txt'), 'utf8');
+  const t = fs.readFileSync(path.join(KAT, 'wolowina-teriyaki-z-brokulami-przepis.txt'), 'utf8');
   const skl = sekcja(t, 'skladniki'), kroki = sekcja(t, 'kroki'), baza = 2;
   const model = { skladniki: P._wewnetrzne.parsujSkladniki(skl), kroki: [], porcjeBazowe: baza };
   await karta.setContent(strona(skl, kroki, baza, NOWY));
@@ -159,7 +159,7 @@ for (const plik of fs.readdirSync(KAT).filter((f) => f.endsWith('.txt'))) {
    to, co robiła wersja 2.0.0 tego skryptu) i sprawdzamy, że licznik zapisów to
    widzi. Bez tego „jeden payload" byłoby zdaniem, którego nic nie sprawdza. */
 {
-  const t = fs.readFileSync(path.join(KAT, '6a57652c742cc19ceca141ad.txt'), 'utf8');
+  const t = fs.readFileSync(path.join(KAT, 'wolowina-teriyaki-z-brokulami-przepis.txt'), 'utf8');
   const skl = sekcja(t, 'skladniki'), kroki = sekcja(t, 'kroki');
   const drugiSluchacz = NOWY + `\n;(function(){var K=document.querySelector('[data-mp-kopiuj-slot]');`
     + `if(K)K.addEventListener('click',function(){navigator.clipboard.writeText('drugi')})})();`;

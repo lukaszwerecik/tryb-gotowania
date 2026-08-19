@@ -1,6 +1,6 @@
 /* generuj-html.mjs — jedno uruchomienie, trzy wyjścia z jednego źródła.
  *
- *     przepisy/<itemId>.txt          ← ŹRÓDŁO, jedyne miejsce do pisania
+ *     przepisy/<slug>.txt            ← ŹRÓDŁO, jedyne miejsce do pisania
  *           │
  *           ├─→ 7 × pole `*-html`            → CMS (Webflow renderuje statycznie)
  *           ├─→ dane/<itemId>.<sha8>.json    → GitHub Pages (ładunek dla parsera)
@@ -28,7 +28,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { parser } from '../odmiana-node.mjs';
 import { wczytajPlik } from './zrodlo.mjs';
-import { KATALOG_ZRODEL, KATALOG_DANYCH, BAZA_PAGES, idZrodel } from './wspolne.mjs';
+import { KATALOG_DANYCH, BAZA_PAGES, zrodla } from './wspolne.mjs';
 import { kontrolujZrodlo, kontrolujWynik } from './kontrole.mjs';
 
 const P = parser();
@@ -292,20 +292,29 @@ function main() {
   const tylko = argv.includes('--tylko') ? argv[argv.indexOf('--tylko') + 1] : null;
   const opcje = { czasZMinutnika: argv.includes('--czas-z-minutnika') };
 
-  const ids = idZrodel().filter((id) => !tylko || id === tylko);
-  if (!ids.length) { console.error('brak plików w przepisy/ (albo --tylko nie trafiło)'); process.exit(2); }
+  const lista = zrodla().filter((z) => !tylko || z.slug === tylko);
+  if (!lista.length) { console.error('brak plików w przepisy/ (albo --tylko nie trafiło)'); process.exit(2); }
 
   if (!sucho) fs.mkdirSync(KATALOG_DANYCH, { recursive: true });
 
   const indeks = {};
   let bledy = 0, ostrzezen = 0;
 
-  for (const id of ids) {
-    const zrodlo = wczytajPlik(path.join(KATALOG_ZRODEL, `${id}.txt`));
-    const w = zbuduj(id, zrodlo, opcje);
+  for (const { slug, item, zrodlo } of lista) {
+    const w = zbuduj(item, zrodlo, opcje);
     bledy += w.bledy.length; ostrzezen += w.ostrzezenia.length;
 
-    indeks[id] = { slug: zrodlo.meta.slug, sha8: w.ladunek.hash, plik: w.ladunek.plik, url: w.ladunek.url };
+    /* Bez `item` nie ma ładunku: adres na Pages jest kluczowany identyfikatorem
+       itemu, a ten jeszcze nie istnieje. Walidacja treści zadziała normalnie —
+       przepis da się pisać i sprawdzać, zanim dostanie miejsce w kolekcji. */
+    if (!item) {
+      console.log(`· ${slug}  bez „item:" w [meta] — waliduję, ale nie buduję ładunku`);
+      w.bledy.forEach((b) => console.log(`    BŁĄD: ${b}`));
+      w.ostrzezenia.forEach((b) => console.log(`    uwaga: ${b}`));
+      continue;
+    }
+
+    indeks[item] = { slug, sha8: w.ladunek.hash, plik: w.ladunek.plik, url: w.ladunek.url };
 
     /* Ładunek z uszkodzonego źródła NIE trafia na dysk. Zapisany wjechałby na
        Pages przy najbliższym pushu i byłby serwowany — a cała ta konstrukcja
@@ -313,7 +322,7 @@ function main() {
     if (!sucho && !w.bledy.length) fs.writeFileSync(path.join(KATALOG_DANYCH, w.ladunek.plik), w.ladunek.tresc);
 
     const znak = w.bledy.length ? '✗' : (w.ostrzezenia.length ? '!' : '✓');
-    console.log(`${znak} ${id}  ${zrodlo.meta.slug}  → ${w.ladunek.plik}`);
+    console.log(`${znak} ${slug}  → ${w.ladunek.plik}`);
     w.bledy.forEach((b) => console.log(`    BŁĄD: ${b}`));
     w.ostrzezenia.forEach((b) => console.log(`    uwaga: ${b}`));
   }
@@ -333,10 +342,15 @@ function main() {
       fs.unlinkSync(path.join(KATALOG_DANYCH, f));
       console.log(`− usunięty nieaktualny ładunek: ${f}`);
     }
-    fs.writeFileSync(path.join(KATALOG_DANYCH, 'indeks.json'), JSON.stringify(indeks, null, 1) + '\n');
+    /* Klucze sortowane, żeby zawartość indeksu była funkcją danych, a nie
+       kolejności czytania katalogu. Bez tego migracja nazw plików (itemId → slug)
+       przestawiła 63 wiersze, nie zmieniając ani jednej wartości — czyli diff,
+       który wygląda jak zmiana treści i uczy, żeby go nie czytać. */
+    const posortowany = Object.fromEntries(Object.keys(indeks).sort().map((k) => [k, indeks[k]]));
+    fs.writeFileSync(path.join(KATALOG_DANYCH, 'indeks.json'), JSON.stringify(posortowany, null, 1) + '\n');
   }
 
-  console.log(`\n${ids.length} przepisów · błędów: ${bledy} · uwag: ${ostrzezen}` +
+  console.log(`\n${lista.length} przepisów · błędów: ${bledy} · uwag: ${ostrzezen}` +
     (sucho ? ' · SUCHY BIEG, nic nie zapisano' : ''));
   if (opcje.czasZMinutnika) console.log('UWAGA: --czas-z-minutnika zmienia treść kroków wobec stanu w CMS.');
   process.exit(bledy ? 1 : 0);

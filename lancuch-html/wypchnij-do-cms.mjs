@@ -56,7 +56,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { zbuduj } from './generuj-html.mjs';
 import { wczytajPlik } from './zrodlo.mjs';
-import { KATALOG_ZRODEL, KORZEN, KOLEKCJA, idZrodel } from './wspolne.mjs';
+import { KORZEN, KOLEKCJA, zrodla } from './wspolne.mjs';
 
 const API = 'https://api.webflow.com/v2';
 const argv = process.argv.slice(2);
@@ -84,8 +84,11 @@ async function api(sciezka, opcje = {}) {
 // ------------------------------------------------------------------ 1. budowa
 const budowy = [];
 let bledy = 0;
-for (const id of idZrodel()) {
-  const zrodlo = wczytajPlik(path.join(KATALOG_ZRODEL, `${id}.txt`));
+for (const { slug, item: id, zrodlo } of zrodla()) {
+  /* Bez `item` nie ma dokąd pisać. To nie jest usterka, tylko przepis jeszcze
+     nieprzypisany do kolekcji — ale wypchnięcie MUSI o tym powiedzieć, bo cicho
+     pominięty przepis wygląda jak wypchnięty. */
+  if (!id) { console.log(`· ${slug}  bez „item:" — pomijam, nie ma dokąd wypchnąć`); continue; }
   const w = zbuduj(id, zrodlo);
   if (w.bledy.length) {
     bledy += w.bledy.length;

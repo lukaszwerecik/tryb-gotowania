@@ -20,7 +20,7 @@ import path from 'node:path';
 import { parser } from '../odmiana-node.mjs';
 import { czytajZrodlo } from '../lancuch-html/zrodlo.mjs';
 import { zbuduj } from '../lancuch-html/generuj-html.mjs';
-import { KATALOG_ZRODEL, idZrodel } from '../lancuch-html/wspolne.mjs';
+import { zrodla } from '../lancuch-html/wspolne.mjs';
 
 const P = parser();
 
@@ -37,9 +37,8 @@ const etykietyZHtml = (html) =>
 
 let zdane = 0, oblane = 0;
 
-for (const id of idZrodel()) {
-  const zrodlo = czytajZrodlo(fs.readFileSync(path.join(KATALOG_ZRODEL, `${id}.txt`), 'utf8'), `${id}.txt`);
-  const wynik = zbuduj(id, zrodlo);
+for (const { item, zrodlo } of zrodla()) {
+  const wynik = zbuduj(item, zrodlo);
   if (wynik.bledy.length) {
     oblane++; console.log(`✗ ${zrodlo.meta.slug} — generator zgłasza błędy: ${wynik.bledy[0]}`); continue;
   }

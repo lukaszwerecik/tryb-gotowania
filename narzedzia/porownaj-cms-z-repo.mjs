@@ -21,11 +21,12 @@ import path from 'node:path';
 import { parser } from '../odmiana-node.mjs';
 import { czytajZrodlo } from '../lancuch-html/zrodlo.mjs';
 import { zbuduj } from '../lancuch-html/generuj-html.mjs';
-import { KATALOG_ZRODEL, idZrodel } from '../lancuch-html/wspolne.mjs';
+import { zrodla } from '../lancuch-html/wspolne.mjs';
 
 const P = parser();
 const zrzut = JSON.parse(fs.readFileSync(process.argv[2] || '/tmp/cms-przepisy.json', 'utf8'));
-const wRepo = new Set(idZrodel());
+const wgSlugu = new Map(zrodla().filter((z) => z.item).map((z) => [z.item, z]));
+const wRepo = new Set(wgSlugu.keys());
 
 /* Pola surowe: nazwa w CMS ↔ sekcja/meta w pliku źródłowym. */
 const SUROWE = {
@@ -59,8 +60,7 @@ let zgodnych = 0;
 for (const it of zrzut) {
   if (!wRepo.has(it.id)) continue;
   const f = it.fieldData;
-  const tekst = fs.readFileSync(path.join(KATALOG_ZRODEL, `${it.id}.txt`), 'utf8');
-  const z = czytajZrodlo(tekst, `${it.id}.txt`);
+  const z = wgSlugu.get(it.id).zrodlo;
   const w = zbuduj(it.id, z);
   let czyste = true;
 
