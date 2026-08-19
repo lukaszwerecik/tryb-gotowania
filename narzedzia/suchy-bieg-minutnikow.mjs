@@ -153,6 +153,61 @@ for (const { slug, zrodlo } of zrodla()) {
   await karta.close();
 }
 
+/* --- akordeon i geometria wobec projektu ---------------------------------
+   Decyzja operatora 2026-08-19: kafle UNOSZĄ SIĘ nad paskiem nawigacji i najwyżej
+   JEDEN jest rozwinięty. Przed poprawką dwa kafle rozpychały BOTTOM do 462 px
+   z 780 — pasek przestawał być czymś, co unosi się nad treścią. Liczby niżej są
+   wprost z klatek Figmy `7195:11065` (kafel krótki 126, BOTTOM 218) i
+   `7211:10893` (kafel pełny 236, stos 248, BOTTOM 328), przy ramce 360×780. */
+{
+  const karta = await kontekst.newPage();
+  await karta.setViewportSize({ width: 360, height: 780 });
+  await karta.goto(ADRES);
+  const r = await karta.evaluate(() => {
+    const krok = { numer: 1, zIlu: 2, tytul: 'duś ragù', tekst: 'x', tekstHtml: 'x', badge: '35 min',
+      /* DOKŁADNY tekst z klatki `7211:10893`. Nie jest obojętny: wysokość kafla to
+         198 + wysokość podpowiedzi, a ta zależy od liczby wierszy. Krótsze zdanie
+         dało 217 zamiast 236 i wyglądało jak rozjazd runtime'u, którym nie było. */
+      kryteriumHtml: 'Gdy skończy, sos ma być gęsty, a tłuszcz zbiera się na wierzchu.', minutnik: { sekundy: 2100, nazwa: 'ragù' },
+      skladnikiTeraz: [], skladnikiDalej: [], skladnikiZuzyte: [], zamiennikiWgKlucza: {} };
+    MP.tryb.otworz({ tytul: 't', czas: '35', meta: [], porcje: 2, skladniki: [], kroki: [krok], zamienniki: {}, bledy: [] }, { porcje: 2 });
+    MP.tryb.pokazKrok(1);
+    const K = MP.tryb.korzen();
+    const pud = (s) => { const e = K.querySelector(s); const b = e.getBoundingClientRect();
+      return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
+    const formy = () => [].slice.call(K.querySelectorAll('.mp-tryb__pigulka')).map((e) => e.getAttribute('data-forma'));
+
+    MP.tryb.minutniki.zKroku(krok);
+    const jeden = { formy: formy(), kafel: pud('.mp-tryb__pigulka'), stos: pud('.mp-tryb__stos'),
+                    bottom: pud('.mp-tryb__bottom'), nawigacja: pud('.mp-tryb__nawigacja'),
+                    tresc: pud('.mp-tryb__top') };
+    MP.tryb.minutniki.uruchom({ nazwa: 'makaron', sekundy: 540 });
+    const dwa = { formy: formy(), bottom: pud('.mp-tryb__bottom') };
+    MP.tryb.minutniki.przelacz(MP.tryb.minutniki.lista()[0]);
+    const poPrzelaczeniu = formy();
+    return { jeden, dwa, poPrzelaczeniu };
+  });
+  const bledy = [];
+  if (r.jeden.formy.join() !== 'pelna') bledy.push(`świeży minutnik ma formę „${r.jeden.formy}", oczekiwałem rozwiniętej`);
+  if (r.jeden.kafel.h !== 236 || r.jeden.kafel.w !== 328 || r.jeden.kafel.x !== 16)
+    bledy.push(`kafel ${JSON.stringify(r.jeden.kafel)} ≠ Figma x=16 w=328 h=236`);
+  if (r.jeden.stos.h !== 248) bledy.push(`stos ${r.jeden.stos.h} ≠ 248`);
+  if (r.jeden.bottom.h !== 328) bledy.push(`BOTTOM ${r.jeden.bottom.h} ≠ 328`);
+  if (r.jeden.nawigacja.h !== 80 || r.jeden.nawigacja.y !== 700) bledy.push(`nawigacja ${JSON.stringify(r.jeden.nawigacja)} ≠ y=700 h=80`);
+  /* Kafle UNOSZĄ SIĘ nad treścią: treść ma pełną wysokość ramki, a nie jest
+     skracana o pasek. To jest ta własność, którą operator nazwał wprost. */
+  if (r.jeden.tresc.h !== 780) bledy.push(`treść ${r.jeden.tresc.h} ≠ 780 — pasek skraca treść zamiast unosić się nad nią`);
+  if (r.dwa.formy.filter((f) => f !== 'zwinieta').length !== 1)
+    bledy.push(`przy dwóch minutnikach rozwiniętych: ${JSON.stringify(r.dwa.formy)}, oczekiwałem dokładnie jednego`);
+  if (r.dwa.bottom.h >= 400) bledy.push(`dwa minutniki rozpychają BOTTOM do ${r.dwa.bottom.h} px`);
+  if (r.poPrzelaczeniu.filter((f) => f !== 'zwinieta').length !== 1)
+    bledy.push(`po ręcznym rozwinięciu: ${JSON.stringify(r.poPrzelaczeniu)}, oczekiwałem dokładnie jednego`);
+
+  if (bledy.length) zle('akordeon i geometria wobec Figmy', bledy.join('\n    '));
+  else { zdane++; console.log(`✓ akordeon i geometria — kafel 328×236, stos 248, BOTTOM 328, nawigacja 80, treść 780; dwa minutniki: BOTTOM ${r.dwa.bottom.h}`); }
+  await karta.close();
+}
+
 await przegladarka.close();
 console.log(`\nminutników sprawdzonych: ${minutnikow}`);
 console.log(`zdane: ${zdane} · oblane: ${oblane}`);

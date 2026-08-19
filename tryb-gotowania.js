@@ -442,8 +442,12 @@
        na pigułce alarmowej. Pomiar: `getComputedStyle(bottom,"::before")`. */
     '#' + ID + ' .mp-tryb__bottom::before{content:"";position:absolute;top:0;' +
       'left:0;right:0;height:1px;background:var(--mp-zielen)}' +
-    '#' + ID + ' .mp-tryb__nawigacja{height:' + W.nawigacja + 'px;display:flex;align-items:flex-start;' +
-      'padding:' + ((W.nawigacja - W.celDotyku) / 2) + 'px ' + W.margines + 'px;gap:' + W.lukaCta + 'px}' +
+    /* `center`, nie `flex-start`: `←` ma 44 px, a CTA 48, więc jedno wyrównanie
+       od góry nie ustawi obu. Projekt (`7195:11065`) daje `←` na +18 i CTA na +16,
+       czyli OBA wyśrodkowane w pasie 80. Padding od góry 18 trzymał `←` poprawnie,
+       ale spychał CTA o 2 px za nisko — zmierzone 718 zamiast 716. */
+    '#' + ID + ' .mp-tryb__nawigacja{height:' + W.nawigacja + 'px;display:flex;align-items:center;' +
+      'padding:0 ' + W.margines + 'px;gap:' + W.lukaCta + 'px}' +
     /* W04 (przeb. 21): `←` jest KÓŁKIEM — obrys 1 px `primary-text` #3E2B22,
        promień 22 (połowa z 44, czyli koło dokładne, nie „zaokrąglony kwadrat").
        Border przy `box-sizing:border-box` nie rusza 44×44, więc B10 zostaje. */
@@ -1640,9 +1644,29 @@
     return p;
   }
 
-  function przelacz(m) {
-    m.rozwinieta = !m.rozwinieta;
+  /* AKORDEON: najwyżej JEDEN kafel rozwinięty naraz. Decyzja operatora 2026-08-19,
+     ze zrzutu projektu: przy dwóch biegnących minutnikach jeden jest rozwinięty,
+     drugi zwinięty do pigułki.
+
+     Bez tego `stos` rósł nieograniczenie: dwa kafle pełne to 236 + 8 + 236 + 12,
+     czyli BOTTOM na 572 px z 780 — pasek zjadał trzy czwarte ekranu i przestawał
+     być czymś, co UNOSI SIĘ nad treścią, a stawał się drugą treścią. Zmierzone
+     przed poprawką: dwa kafle dawały BOTTOM 462 px.
+
+     Reguła stoi w JEDNYM miejscu — `rozwin()` — bo rozwinięcie ma dwa wyzwalacze
+     (klik użytkownika i start nowego minutnika) i rozdzielenie ich dałoby dwie
+     kopie tej samej decyzji. */
+  function rozwin(m) {
+    minutniki.forEach(function (x) {
+      if (x !== m && x.rozwinieta) { x.rozwinieta = false; rysujKafel(x); }
+    });
+    m.rozwinieta = true;
     rysujKafel(m);
+  }
+
+  function przelacz(m) {
+    if (m.rozwinieta) { m.rozwinieta = false; rysujKafel(m); }
+    else rozwin(m);
     przeliczBottom();
     return m.rozwinieta;
   }
@@ -1687,7 +1711,11 @@
       nazwa: opcje.nazwa || '',
       sekundy: opcje.sekundy || 0,
       podpowiedz: opcje.podpowiedz || null,
-      rozwinieta: !!opcje.rozwinieta,
+      /* DOMYŚLNIE ROZWINIĘTY. Do 2026-08-19 było odwrotnie (`!!opcje.rozwinieta`),
+         więc minutnik odpalony z kroku pokazywał się jako pasek 40 px — a obie
+         klatki kroków w projekcie (`7195:11065`, `7211:10893`) rysują kafel
+         rozwinięty. `rozwinieta: false` nadal da się podać jawnie. */
+      rozwinieta: opcje.rozwinieta !== false,
       koniec: teraz() + (opcje.sekundy || 0) * 1000,
       zatrzymany: null,
       pozostalo: -1,
@@ -1696,6 +1724,7 @@
     };
     stan.czesci.stos.appendChild(zbudujKafel(m));
     minutniki.push(m);   // C14: drugi kafel dokłada się do `stos`, nie zastępuje pierwszego
+    if (m.rozwinieta) rozwin(m);   // zwija poprzedni — patrz `rozwin()`
     tyk();
     przeliczBottom();
     if (!interwal) interwal = setInterval(tyk, 200);
@@ -1718,7 +1747,11 @@
          Markdown dosłownie (zmierzone 2026-08-16: „Różyczki są **jaskrawozielone**"),
          podczas gdy akapit kroku obok renderował to samo poprawnie. */
       podpowiedz: opcje.podpowiedz || krok.kryteriumHtml || null,
-      rozwinieta: !!opcje.rozwinieta
+      /* PRZEKAZUJEMY DALEJ, NIE ROZSTRZYGAMY. `!!opcje.rozwinieta` (do 2026-08-19)
+         zamieniało brak wartości na twarde `false` i po cichu nadpisywało wartość
+         domyślną z `uruchomMinutnik`. Wyszło to dopiero na pomiarze: kafel odpalony
+         z kroku był zwinięty, choć domyślna zmieniła się na rozwiniętą. */
+      rozwinieta: opcje.rozwinieta
     });
   }
 
