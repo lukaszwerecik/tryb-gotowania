@@ -161,6 +161,31 @@ Odtworzenie: `node narzedzia/suchy-bieg-generatora.mjs && node lancuch-html/poro
    nagłówki `[pole]`, tekst dosłowny, zero cytowania i zero ucieczek — ale sama ścieżka jest
    decyzją operatora i determinuje resztę.
 
+## Zmiana hosta Pages — procedura, nie improwizacja
+
+Adres ładunku siedzi w DWÓCH miejscach poza repo: w 16 polach `parser-url` w CMS
+i w dwóch `<script src>` w custom code szablonu. Zmiana hosta dotyka obu, w tej
+kolejności i nie w innej:
+
+1. **nowy host serwuje** — repo z artefaktami na miejscu, Pages zbudowane, HTTPS
+   wstało. Sprawdź pobraniem jednego ładunku, nie ustawieniem w panelu.
+2. `BAZA_PAGES` w `lancuch-html/wspolne.mjs` → nowy adres (jedna linia).
+3. `node lancuch-html/generuj-html.mjs` — nazwy plików się NIE zmienią (hash liczy
+   się z treści, nie z adresu), zmieni się wyłącznie `parser-url` w `dane/indeks.json`.
+4. commit + push, poczekaj na przebudowę Pages.
+5. `wypchnij-do-cms.mjs` — bramka nie przepuści, dopóki ładunki nie leżą pod nowym
+   adresem. Potem zapis 16 pól i odczyt zwrotny przez `porownaj.mjs`.
+6. dwa `<script src>` w custom code szablonu, publikacja **najpierw na staging**.
+7. **dopiero teraz** wygaszenie starego hosta.
+
+Punkt 7 jest ostatni z pomiaru, nie z ostrożności: produkcja może serwować starszą
+publikację szablonu i wskazywać na stary adres jeszcze długo po tym, jak staging
+przejdzie na nowy. Wyłączenie starego hosta przed sprawdzeniem, na co wskazuje
+opublikowana produkcja, jest gotową awarią na żywym serwisie.
+
+Kontrola po drodze: `porownaj.mjs` na zrzucie CMS zgłosi rozjazd `parser-url` dla
+każdego itemu, który został na starym adresie. Zero rozjazdów = przejście domknięte.
+
 ## Odcisk
 
 `odcisk-2026-08-19.json` to **detektor zmiany, nie druga kopia treści**: sha256 każdego pola
