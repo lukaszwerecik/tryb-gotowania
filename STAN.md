@@ -12305,3 +12305,45 @@ decyzja; do tego czasu kolejność publikacji da się przećwiczyć bez ryzyka.
 
 Otwarte pozycje (czas kroku z `minutnik:`, pogrubienie w polach kartowych, zadanie
 harmonogramowe, ścieżka edycji dla redakcji): `lancuch-html/README.md` §„Otwarte pozycje".
+
+### Most Pages↔CMS: sesja Claude zamiast skryptu z tokenem `[U]` 2026-08-19
+
+Decyzja operatora, powód konstrukcyjny: **repozytorium musi być publiczne**, bo
+inaczej nie działa ani jsDelivr, ani Pages — a to znaczy, że token Webflow nie ma
+tu gdzie mieszkać. Mostem jest sesja Claude przez Webflow MCP, nie skrypt z sekretem.
+
+Konsekwencja, której nie da się obejść uprzejmością: **sesja nie widzi Pages.**
+`lukaszwerecik.github.io` jest zablokowane przez politykę egressu środowiska `[V]`,
+i przez `curl`, i przez `WebFetch`. Bramka kolejności, która pobierała każdy ładunek
+spod jego adresu, nie ma jak zadziałać z tej strony.
+
+**Zastąpiona parą, którą da się sprawdzić stąd** (`wypchnij-do-cms.mjs --przez-mcp`):
+
+1. czy `origin/main` niesie ładunek o identycznym haszu obiektu gita, liczonym
+   ZE ŚWIEŻO WYGENEROWANEJ TREŚCI, a nie z pliku na dysku — plik mógł się zmienić
+   po commicie i wtedy porównanie „dysk vs drzewo" przechodzi, mówiąc o czym innym;
+2. czy przebieg `pages build and deployment` dla TEGO SAMEGO SHA dał `success`.
+
+Bramka jest słabsza o jedno założenie: ufa, że Pages serwuje korzeń repo z `main`.
+To jest zmierzone osobno (DEPLOY.md) i nie zmienia się przy publikacji treści.
+
+**Zakres zapisu zawężony do jednego pola i to był ruch obniżający ryzyko.** Pola
+`*-html` i cztery makro były już w CMS poprawne (112/112 i 64/64 tego samego dnia),
+więc ponowny zapis nie dawał nic poza ryzykiem literówki — a ono jest zmierzone,
+nie teoretyczne: 6 przekręceń w jednej sesji, dwa o identycznej długości ciągu.
+Zapisane zostało wyłącznie `parser-url`, 16 krótkich adresów. `fieldData` jest
+scalane, nie zastępowane, więc reszta pól została nietknięta.
+
+**Wynik `[V]`:** pole `parser-url` (Link) założone, 16 itemów zaktualizowanych,
+odczyt zwrotny przez `porownaj.mjs` na świeżym zrzucie kolekcji: **176 zgodnych,
+0 rozjazdów, 0 uwag**. Itemy zostają wersjami roboczymi — publikacji nie zrobiono.
+
+Merge migracji: `main` przeszedł fast-forwardem `6b0a898 → d6389d1`, oba przebiegi
+CI (`lancuch-html`, `pages build and deployment`) na zielono na tym SHA.
+
+**Sprostowanie do wcześniejszego zapisu tej sesji:** twierdziłem kilkakrotnie, że
+sesja bierze poświadczenia GitHuba na starcie i instalacja aplikacji jej nie pomoże.
+Nieprawda — po instalacji `github.com/apps/claude` zapis zadziałał natychmiast, i przez
+API, i przez `git push`, bez restartu sesji. Wniosek pochodził z tego, że odświeżenie
+konektora nic nie dało; ale konektor odnawiał AUTORYZACJĘ, a brakowało INSTALACJI.
+Kasowanie referencji pozostaje odmawiane (403) przy działającym tworzeniu.
