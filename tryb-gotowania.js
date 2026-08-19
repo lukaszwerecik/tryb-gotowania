@@ -548,12 +548,24 @@
     '#' + ID + ' [data-stan="koncowka"] .mp-tryb__kropka,' +
     '#' + ID + ' [data-stan="zero"] .mp-tryb__kropka{' +
       'width:' + W.kropkaDuza + 'px;height:' + W.kropkaDuza + 'px;background:var(--mp-alarm)}' +
-    /* NIENARYSOWANE (G3, G4) + I-19/I-20/I-21: eskalacja TEMPEM, nie barwą; przy 0:00 puls gaśnie.
-       Animacja skaluje kropkę, więc jej rozmiar mierzy się przez `getComputedStyle`
-       (układ), nie przez `getBoundingClientRect` (klatka animacji). */
+    /* JEDNO TEMPO NA CAŁE 60 s — decyzja operatora 2026-08-19.
+       Do dziś puls przyspieszał poniżej 10 s (stan `koncowka`, 0,5 s). Eskalacja
+       była w kodzie oznaczona `NIENARYSOWANE (G3, G4)`, czyli WYMYŚLONA: adnotacja
+       na klatce `7196:11087` opisuje jeden rytm — „pulsuje raz na sekundę" — dla
+       ostatnich 60 s i o drugim progu nie mówi. Zachowanie bez źródła zostało
+       zdjęte, zamiast dalej udawać, że coś je uzasadnia.
+
+       Stan `koncowka` ZOSTAJE w modelu: `stanCzasu()` dalej go zwraca, dalej
+       jest w atrybucie `data-stan` i dalej dokłada obrys alarmowy. Zniknęła tylko
+       różnica TEMPA. Usunięcie stanu byłoby większą zmianą, niż operator zamówił,
+       i skasowałoby próg I-20 z matrycy.
+
+       Przy 0:00 puls gaśnie (I-21). Animacja skaluje kropkę, więc jej rozmiar
+       mierzy się przez `getComputedStyle` (układ), nie przez
+       `getBoundingClientRect` (klatka animacji). */
     '@keyframes mp-tryb-puls{0%,100%{transform:scale(1)}50%{transform:scale(.6)}}' +
-    '#' + ID + ' [data-stan="ostatnia-minuta"] .mp-tryb__kropka{animation:mp-tryb-puls 1s steps(60) infinite}' +
-    '#' + ID + ' [data-stan="koncowka"] .mp-tryb__kropka{animation:mp-tryb-puls .5s steps(30) infinite}' +
+    '#' + ID + ' [data-stan="ostatnia-minuta"] .mp-tryb__kropka,' +
+    '#' + ID + ' [data-stan="koncowka"] .mp-tryb__kropka{animation:mp-tryb-puls 1s steps(60) infinite}' +
     '#' + ID + ' [data-stan="zero"] .mp-tryb__kropka{animation:none}' +
 
     /* RAMKA PULSUJE RAZEM Z KROPKĄ. Adnotacja na klatce `7196:11087` mówi wprost:
@@ -569,8 +581,8 @@
        Tempo i wygaszenie przy 0:00 idą za kropką, żeby jedna rzecz nie pulsowała
        w dwóch rytmach. */
     '@keyframes mp-tryb-puls-ramki{0%,100%{outline-color:var(--mp-alarm)}50%{outline-color:transparent}}' +
-    '#' + ID + ' .mp-tryb__pigulka[data-stan="ostatnia-minuta"]{animation:mp-tryb-puls-ramki 1s steps(60) infinite}' +
-    '#' + ID + ' .mp-tryb__pigulka[data-stan="koncowka"]{animation:mp-tryb-puls-ramki .5s steps(30) infinite}' +
+    '#' + ID + ' .mp-tryb__pigulka[data-stan="ostatnia-minuta"],' +
+    '#' + ID + ' .mp-tryb__pigulka[data-stan="koncowka"]{animation:mp-tryb-puls-ramki 1s steps(60) infinite}' +
     '#' + ID + ' .mp-tryb__pigulka[data-stan="zero"]{animation:none}' +
 
     /* W17: styl `Caption` — DM Sans **Medium (500)**, 14/16, `primary-text`.

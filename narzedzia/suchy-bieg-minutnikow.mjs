@@ -288,7 +288,8 @@ for (const { slug, zrodlo } of zrodla()) {
       const kr = getComputedStyle(e.querySelector('.mp-tryb__kropka'));
       return { forma: e.getAttribute('data-forma'), stan: e.getAttribute('data-stan'),
                y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height),
-               ramkaAnim: st.animationName, kropka: parseFloat(kr.width), kropkaAnim: kr.animationName };
+               ramkaAnim: st.animationName, ramkaCzas: st.animationDuration,
+               kropka: parseFloat(kr.width), kropkaAnim: kr.animationName, kropkaCzas: kr.animationDuration };
     });
     const zdj = () => ({ bottom: pud('.mp-tryb__bottom'), stos: pud('.mp-tryb__stos'), kafle: kafle() });
 
@@ -305,11 +306,21 @@ for (const { slug, zrodlo } of zrodla()) {
       ghosty: [].slice.call(K.querySelectorAll('.mp-tryb__ghost')).filter((e) => e.offsetParent !== null)
         .map((e) => { const b = e.getBoundingClientRect(); return { x: Math.round(b.x), w: Math.round(b.width), h: Math.round(b.height) }; }) });
 
+    /* JEDNO TEMPO na całe 60 s: `ostatnia-minuta` i `koncowka` muszą pulsować
+       tak samo. Przyspieszenie poniżej 10 s bylo NIENARYSOWANE i zostało zdjęte
+       decyzją operatora 2026-08-19. */
+    MP.tryb.minutniki.wyczysc();
+    MP.tryb.minutniki.zKroku(krok);
+    MP.zegar.__t += (540 - 47) * 1000; MP.tryb.minutniki.tyk();
+    const przy47 = kafle()[0];
+    MP.zegar.__t += 40 * 1000; MP.tryb.minutniki.tyk();
+    const przy7 = kafle()[0];
+
     MP.tryb.minutniki.wyczysc();
     MP.tryb.minutniki.uruchom({ nazwa: 'a', sekundy: 2100 });
     MP.tryb.minutniki.uruchom({ nazwa: 'b', sekundy: 540 });
     const stosDwoch = zdj();
-    return { ostatniaMinuta, czasMinal, stosDwoch };
+    return { ostatniaMinuta, czasMinal, stosDwoch, przy47, przy7 };
   });
 
   const b = [];
@@ -332,6 +343,12 @@ for (const { slug, zrodlo } of zrodla()) {
     b.push(`czas minął: odstęp ghostów ${cm.ghosty[1].x - cm.ghosty[0].x} ≠ 156`);
   if (cm.kafle[0].kropkaAnim !== 'none' || cm.kafle[0].ramkaAnim !== 'none')
     b.push('czas minął: puls nie zgasł przy 0:00 (I-21)');
+
+  if (r.przy47.stan !== 'ostatnia-minuta' || r.przy7.stan !== 'koncowka')
+    b.push(`progi stanów: 47 s → „${r.przy47.stan}", 7 s → „${r.przy7.stan}"`);
+  if (r.przy47.kropkaCzas !== r.przy7.kropkaCzas || r.przy47.ramkaCzas !== r.przy7.ramkaCzas)
+    b.push(`tempo pulsu różni się między 47 s i 7 s: kropka ${r.przy47.kropkaCzas}/${r.przy7.kropkaCzas}, ramka ${r.przy47.ramkaCzas}/${r.przy7.ramkaCzas} — ma być jedno na całe 60 s`);
+  if (r.przy47.kropkaCzas !== '1s') b.push(`tempo pulsu ${r.przy47.kropkaCzas} ≠ 1s`);
 
   const sd = r.stosDwoch;
   if (sd.bottom.h !== 266 || sd.stos.h !== 186) b.push(`stos dwóch: BOTTOM ${sd.bottom.h}/stos ${sd.stos.h} ≠ 266/186`);
