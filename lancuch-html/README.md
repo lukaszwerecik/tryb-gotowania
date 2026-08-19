@@ -192,3 +192,33 @@ każdego itemu, który został na starym adresie. Zero rozjazdów = przejście d
 `*-html` z dnia migracji. Gdy zaświeci, prawdę pokazuje CMS; odcisk zastępuje się wtedy
 nowym, z nową datą i z powodem zapisanym w `STAN.md`. **Podciąganie odcisku pod nowy wynik,
 żeby bramka przeszła, kasuje jedyny sygnał, jaki ta bramka daje.**
+
+## Ukryty blok surowych składników — usunięty 2026-08-19
+
+`div.recipe-ing__source[data-mp-skladniki]` stał w szablonie `detail_przepisy`
+jako wejście dla `mpSkladniki@1.2.0`. Był ukryty CSS-em, ale **był w źródle HTML**,
+więc mikroskładnia („3 łyżka skrobi", `#klucz`, `@slug`) trafiała do indeksu —
+znalezisko `D-39.50`. Po przejściu na `mpSkladniki@2.0.1`, który bierze dane
+przez `MP.przepis` (a parser czyta embed `#mp-skladniki`), nikt go już nie czytał.
+
+**Sprawdzone przed usunięciem, nie założone:** pobrane z CDN Webflow źródła
+wszystkich sześciu skryptów strony (`mpGotowanieStart`, `mpKartyPrzepisu`,
+`mpKaruzelaPrzepisow`, `mpKopiujListe`, `mpKrokiTabela`, `mpSzyna`) — **zero**
+wystąpień `data-mp-skladniki`. Blok kodu witryny również go nie zna.
+
+Nie usunięto `div[data-mp-porcje-bazowe]`: czyta go `mpGotowanieStart@1.5.0`
+jako zapasowe źródło liczby porcji, gdy etykieta selektora nie niesie cyfry.
+To liczba, nie mikroskładnia, więc dla indeksu jest obojętna.
+
+### Jak przywrócić, gdyby okazało się potrzebne
+
+Element był pierwszym dzieckiem `div[data-mp-skladniki-lista]`
+(`62435165-5df3-c5cc-636f-37376f7bbca5`). Odtworzenie to dwa wywołania:
+
+1. `data_element_builder` → `DivBlock` w tym rodzicu, `set_style: ['recipe-ing__source']`,
+   atrybut `data-mp-skladniki=""`.
+2. `data_element_settings_tool > set_settings` → klucz `text`, wiązanie CMS
+   (kolekcja `6a574b13929618407b161661`, pole `5f0323ff2198198080ff1ac7e96c1827`).
+
+Uwaga na klucz wiązania: dla `DivBlock`/`Paragraph` jest to `text`, ale dla
+`RichText` — `richText`. Pomyłka kończy się błędem „Setting not applicable”.
