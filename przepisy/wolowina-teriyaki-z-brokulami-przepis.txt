@@ -14,7 +14,7 @@ item: 6a57652c742cc19ceca141ad
 #sojowy      200 ml jasnego sosu sojowego
 #brokuly     200 g brokułów
 #czosnek     3 ząbki czosnku
-#imbir       3 cm imbiru
+#imbir       1 {kawałek imbiru (3 cm)|kawałki imbiru (3 cm)|kawałków imbiru (3 cm)|kawałka imbiru (3 cm)}
 #pomarancza  1 pomarańcza
 #dymka       1 dymka
 #maka        1 łyżka mąki

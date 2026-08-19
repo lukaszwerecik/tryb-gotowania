@@ -14,7 +14,7 @@ item: 6a57649e2c911147dc2602d9
 #sojowy    120 ml jasnego sosu sojowego
 #woda      50 ml wody
 #miod      2 łyżki miodu
-#imbir     2 cm imbiru
+#imbir     1 {kawałek imbiru (2 cm)|kawałki imbiru (2 cm)|kawałków imbiru (2 cm)|kawałka imbiru (2 cm)}
 #czosnek   1 ząbek czosnku
 #chilli    1 łyżeczka sosu chilli (opcjonalnie)
 #limonka   1 limonka
