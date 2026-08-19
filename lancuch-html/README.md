@@ -222,3 +222,57 @@ Element był pierwszym dzieckiem `div[data-mp-skladniki-lista]`
 
 Uwaga na klucz wiązania: dla `DivBlock`/`Paragraph` jest to `text`, ale dla
 `RichText` — `richText`. Pomyłka kończy się błędem „Setting not applicable”.
+
+## Tor ładunku — strona bez mikroskładni (2026-08-19)
+
+Do dziś strona przepisu karmiła parser mikroskładnią z CMS-u: embedy `#mp-skladniki`
+i `#mp-kroki` oraz trzy bloki `[data-mp-zrodlo]` z polami kartowymi. Skutek uboczny
+był taki, że mikroskładnia stała w wyjściowym HTML-u i szła do indeksu.
+
+Nowy tor bierze te same dane z ładunku na Pages, po adresie z pola `parser-url`:
+
+```
+[data-mp-ladunek]  (link związany z `parser-url`, klasa `mp-ukryte`)
+        │
+   mpLadunek@1.0.0 ── fetch ──▶ dane/<itemId>.<sha8>.json
+        │
+        └─▶ MP.przepis.zaladuj({skladniki, kroki, pola, wartosciPorcja})
+                 │
+                 ├─▶ MP.model  ──▶ mpKartyPrzepisu@2.0.0   (karty Q→A)
+                 │             ├─▶ mpSkladniki@3.0.0       (lista + porcje 1–7)
+                 │             └─▶ mpGotowanieStart@1.6.0  (CTA trybu gotowania)
+                 └─▶ zdarzenie `mp:model`
+```
+
+**Parser jest nietknięty.** Ładunek trzyma mikroskładnię jako tekst, a `zaladuj()`
+przyjmuje ją wprost przez opcje — zmierzone: model z ładunku jest identyczny
+z modelem z DOM-u, pole po polu.
+
+**Degradacja.** Gdy ładunku nie da się pobrać, `MP.ladunek.stan` to `blad-pobrania`,
+w konsoli stoi ostrzeżenie, a strona zostaje na treści serwerowej (`skladniki-html`
+i pozostałe `*-html`). Czytelnik nie widzi komunikatu o błędzie — widzi stronę bez
+części interaktywnych. Decyzja operatora 2026-08-19.
+
+**Dlaczego `mpGotowanieStart` rozróżnia obecność loadera:** po usunięciu embedów
+`zaladuj()` bez opcji zwróciłby model bez składników — i to bez wyjątku. Tryb
+gotowania otwierałby się na pustce po cichu. Dlatego gdy na stronie JEST loader,
+CTA czeka na `MP.model`; gdy loadera NIE MA, zostaje stare czytanie DOM-u.
+
+Próba: `narzedzia/suchy-bieg-ladunku.mjs` — 16 przepisów w Chromium, DOM bez
+embedów i bez `[data-mp-zrodlo]`, karty i lista postawione obok starego toru.
+Dwie kontrole negatywne: 404 i podmieniony ładunek.
+
+### Czego jeszcze NIE usunięto
+
+Embedy `#mp-*` i trzy `[data-mp-zrodlo]` **stoją nadal** — nikt ich już nie czyta,
+ale są jedyną drogą odwrotu do poprzednich wersji skryptów. Zdejmujemy je dopiero
+po potwierdzeniu stagingu; dopiero wtedy w HTML-u nie ma ani znaku mikroskładni
+i dopiero wtedy wolno kasować pola źródłowe w Webflow.
+
+### Ryzyko, którego nie da się sprawdzić z tego środowiska
+
+`fetch` idzie z domeny Webflow na `miesna-paczka.github.io`, czyli między domenami.
+GitHub Pages odpowiada nagłówkiem `Access-Control-Allow-Origin: *`, więc powinno
+przejść — ale egress tego środowiska blokuje `*.github.io`, więc **nie zmierzyłem
+tego**. Objaw ewentualnej blokady jest jednoznaczny: `MP.ladunek.stan` = `blad-pobrania`
+i ostrzeżenie CORS w konsoli, przy poprawnie działającej treści serwerowej.
