@@ -204,4 +204,19 @@ export function zapiszZrodlo({ meta, pola }) {
 export const wczytajPlik = (sciezka) =>
   czytajZrodlo(fs.readFileSync(sciezka, 'utf8'), sciezka);
 
+/* `wartosci-odzywcze` / `wartosci-porcja`: „klucz: wartość; klucz: wartość".
+   Kolejność członów jest kolejnością z pola — jest to kolejność z etykiety
+   produktu spożywczego i nie wolno jej sortować.
+
+   Mieszka TUTAJ, a nie w generatorze, bo czytają to dwie strony: generator
+   (buduje HTML) i kontrole (sprawdzają, czy zbudowany HTML da się przeczytać
+   po zdjęciu znaczników). Druga kopia tej samej wiedzy rozeszłaby się. */
+export function parsujWartosci(txt) {
+  return String(txt).split(';').map((p) => p.trim()).filter(Boolean).map((p) => {
+    const i = p.indexOf(':');
+    if (i < 0) return { klucz: p, wartosc: '', blad: `„${p}" nie ma dwukropka` };
+    return { klucz: p.slice(0, i).trim(), wartosc: p.slice(i + 1).trim() };
+  });
+}
+
 export { BladZrodla };

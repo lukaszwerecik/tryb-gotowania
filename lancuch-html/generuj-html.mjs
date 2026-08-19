@@ -27,7 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { parser } from '../odmiana-node.mjs';
-import { wczytajPlik } from './zrodlo.mjs';
+import { wczytajPlik, parsujWartosci } from './zrodlo.mjs';
 import { KATALOG_DANYCH, BAZA_PAGES, zrodla } from './wspolne.mjs';
 import { kontrolujZrodlo, kontrolujWynik } from './kontrole.mjs';
 
@@ -143,22 +143,26 @@ function kartyHtml(wpisy) {
   }).join('');
 }
 
-/* `wartosci-odzywcze` / `wartosci-porcja`: „klucz: wartość; klucz: wartość".
-   Kolejność wierszy jest kolejnością z pola — jest to kolejność z etykiety
-   produktu spożywczego i nie wolno jej sortować. */
-export function parsujWartosci(txt) {
-  return String(txt).split(';').map((p) => p.trim()).filter(Boolean).map((p) => {
-    const i = p.indexOf(':');
-    if (i < 0) return { klucz: p, wartosc: '', blad: `„${p}" nie ma dwukropka` };
-    return { klucz: p.slice(0, i).trim(), wartosc: p.slice(i + 1).trim() };
-  });
-}
+/* LISTA, NIE TABELA — i to nie jest wybór estetyczny.
 
+   Webflow RichText nie zna `<table>`. Pole z tabelą jest wyświetlane i renderowane
+   po zdjęciu znaczników, a komórki tabeli nie mają między sobą żadnego separatora,
+   więc wszystko skleja się w jeden ciąg:
+
+       „wartość odżywczaw 100 genergia693 kJ / 165 kcaltłuszcz6,7 g…"
+
+   Zgłoszone przez operatora 2026-08-19 na zrzucie z edytora CMS, odtworzone
+   znak w znak z regeneracji.
+
+   Najgorsze w tej usterce jest to, że decyzja BYŁA JUŻ PODJĘTA i zapisana —
+   w helpText obu pól stoi wprost „Webflow nie renderuje tabel w RichText, więc
+   to lista, nie tabela". Nie została tylko przeniesiona do kodu, który te pola
+   produkuje. Ta sama klasa co `BAZA_PAGES`: fakt zapisany w jednym miejscu
+   i nieaktualny w drugim. Dlatego niżej stoi kontrola, a nie sama poprawka. */
 function wartosciHtml(txt, naglowekKolumny) {
-  const wiersze = parsujWartosci(txt)
-    .map((w) => `<tr><th scope="row">${escTekst(w.klucz)}</th><td>${escTekst(w.wartosc)}</td></tr>`).join('');
-  return `<table><thead><tr><th scope="col">wartość odżywcza</th>` +
-    `<th scope="col">${escTekst(naglowekKolumny)}</th></tr></thead><tbody>${wiersze}</tbody></table>`;
+  const pozycje = parsujWartosci(txt)
+    .map((w) => `<li>${escTekst(w.klucz)}: ${escTekst(w.wartosc)}</li>`).join('');
+  return `<p><strong>${escTekst(naglowekKolumny)}</strong></p><ul role="list">${pozycje}</ul>`;
 }
 
 // ------------------------------------------------------------------ pochodne

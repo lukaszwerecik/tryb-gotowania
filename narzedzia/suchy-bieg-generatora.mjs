@@ -11,8 +11,9 @@
  * Kod wyjścia 0 = każdy uszkodzony przypadek został złapany.
  */
 import fs from 'node:fs';
-import { czytajZrodlo, zapiszZrodlo } from '../lancuch-html/zrodlo.mjs';
+import { czytajZrodlo, zapiszZrodlo, parsujWartosci } from '../lancuch-html/zrodlo.mjs';
 import { zbuduj } from '../lancuch-html/generuj-html.mjs';
+import { kontrolujWynik } from '../lancuch-html/kontrole.mjs';
 import { zrodla, sprawdzNazwePliku } from '../lancuch-html/wspolne.mjs';
 
 const PIERWSZY = zrodla()[0];
@@ -172,6 +173,30 @@ przypadekFormatu('item o złym kształcie',
   try { sprawdzNazwePliku('inny-slug.txt', 'wolowina-teriyaki'); } catch (e) { komunikat = e.message; }
   if (komunikat.includes('nie zgadza się ze slugiem')) { zdane++; console.log('✓ nazwa pliku niezgodna ze slugiem w [meta]'); }
   else { oblane++; console.log(`✗ niezgodna nazwa pliku przeszła: ${komunikat}`); }
+}
+
+/* --- 7c: pole, którego nie da się przeczytać po zdjęciu znaczników --------
+   Tego przypadku nie da się wywołać uszkodzeniem ŹRÓDŁA — usterka siedziała
+   w generatorze, nie w treści. Podstawiamy więc pod kontrolę dokładnie ten
+   HTML, który generator produkował do 2026-08-19 (tabelę), i sprawdzamy, że
+   kontrola go odrzuca. Bez tego poprawka byłaby zmianą bez dowodu, a powrót
+   do tabeli przeszedłby bramkę tak samo cicho jak za pierwszym razem. */
+{
+  const czysty = zbuduj(WZORZEC, CALY);
+  const tabela = '<table><thead><tr><th scope="col">wartość odżywcza</th>' +
+    '<th scope="col">w 100 g</th></tr></thead><tbody>' +
+    parsujWartosci(CALY.pola['wartosci-odzywcze'])
+      .map((w) => `<tr><th scope="row">${w.klucz}</th><td>${w.wartosc}</td></tr>`).join('') +
+    '</tbody></table>';
+  const udawany = { pola: { ...czysty.pola, 'wartosci-100-html': tabela } };
+  const r = kontrolujWynik(CALY, udawany);
+  if (r.bledy.some((b) => b.includes('skleja się z sąsiadem'))) {
+    zdane++; console.log('✓ wartości jako tabela — kontrola widzi, że pole jest nieczytelne');
+  } else {
+    oblane++;
+    console.log('✗ wartości jako tabela PRZESZŁY kontrolę');
+    console.log(r.bledy.length ? r.bledy.map((b) => `    dostałem: ${b}`).join('\n') : '    dostałem: ZERO BŁĘDÓW');
+  }
 }
 
 // --- 8: kontrola pozytywna — czysty plik NIE świeci -----------------------
